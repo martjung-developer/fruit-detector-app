@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/home_page.dart';
+import 'theme/app_theme.dart';
 
 void main() => runApp(const FruitQualityApp());
 
@@ -9,8 +10,8 @@ class FruitQualityApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'Fruit Quality Classifier',
-        theme: ThemeData(colorSchemeSeed: Colors.green, useMaterial3: true),
-        home: const HomePage(),
-      );
+    title: 'Fruit Quality Classifier',
+    theme: AppTheme.data,
+    home: const HomePage(),
+  );
 }

@@ -9,8 +9,18 @@ ml/reports/
 data/
 
 # Flutter
-.dart_tool/
-build/
+app/build/
+app/.dart_tool/
+app/.idea/
+
+# Python / ML
+ml/.venv/
+ml/__pycache__/
+ml/.pytest_cache/
+ml/data/
+ml/data_original/
+ml/bad_images/
+ml/fruitq/
 
 # Local tooling
 .idea/
