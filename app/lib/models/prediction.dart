@@ -1,0 +1,49 @@
+class Prediction {
+  const Prediction({
+    required this.label,
+    required this.fruit,
+    required this.quality,
+    required this.confidence,
+    required this.probabilities,
+    required this.lowConfidence,
+  });
+
+  final String label;
+  final String fruit;
+  final String quality;
+  final double confidence;
+  final Map<String, double> probabilities;
+  final bool lowConfidence;
+
+  factory Prediction.fromJson(Object? value) {
+    if (value is! Map<String, dynamic>) {
+      throw const FormatException('The API returned an unexpected response.');
+    }
+    final rawProbabilities = value['probabilities'];
+    if (rawProbabilities is! Map<String, dynamic>) {
+      throw const FormatException('The API response is missing probability scores.');
+    }
+    final probabilities = <String, double>{};
+    for (final entry in rawProbabilities.entries) {
+      if (entry.value is! num) {
+        throw const FormatException('The API returned an invalid probability score.');
+      }
+      probabilities[entry.key] = (entry.value as num).toDouble();
+    }
+    final label = value['label'];
+    final fruit = value['fruit'];
+    final quality = value['quality'];
+    final confidence = value['confidence'];
+    if (label is! String || fruit is! String || quality is! String || confidence is! num) {
+      throw const FormatException('The API response is missing prediction details.');
+    }
+    return Prediction(
+      label: label,
+      fruit: fruit,
+      quality: quality,
+      confidence: confidence.toDouble(),
+      probabilities: probabilities,
+      lowConfidence: value['low_confidence'] == true,
+    );
+  }
+}

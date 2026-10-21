@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fruit Quality Classifier</title>
+  <!-- CSS -->
+  <style>
+    body { font: 16px system-ui, sans-serif; max-width: 850px; margin: 2rem auto; padding: 0 1rem; color: #183326; }
+    h1 { color: #196b3a; }
+    button { padding: .65rem 1rem; background: #196b3a; color: white; border: 0; border-radius: .4rem; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .card { border: 1px solid #d4e2d8; border-radius: .6rem; padding: 1rem; margin: 1rem 0; }
+    .row { display: grid; grid-template-columns: minmax(130px, 1fr) 3fr 4rem; gap: .7rem; align-items: center; margin: .35rem 0; }
+    progress { width: 100%; accent-color: #26824b; }
+    .error { color: #a11; } .warning { color: #754b00; background: #fff1c2; border-radius: .3rem; padding: .2rem .5rem; }
+    img { max-width: 180px; max-height: 150px; object-fit: contain; }
+    #summary { background: #f0f7f2; }
+  </style>
+</head>
+<body>
+  <h1>Fruit Quality Classifier</h1>
+  <p>Choose one or more fruit images to estimate their quality.</p>
+  <form id="upload-form">
+    <label for="images">Fruit images</label>
+    <input id="images" name="images" type="file" accept="image/*" multiple required>
+    <button id="submit" type="submit">Classify images</button>
+  </form>
+  <section id="summary" class="card" aria-live="polite" hidden></section>
+  <section id="results" aria-live="polite"></section>
+  <!-- JavaScript -->
+  <script>
+    const classes = ['fresh_apple','fresh_orange','fresh_pineapple','overripe_apple','overripe_orange','overripe_pineapple','rotten_apple','rotten_orange','rotten_pineapple'];
+    const form = document.querySelector('#upload-form');
+    const input = document.querySelector('#images');
+    const results = document.querySelector('#results');
+    const summary = document.querySelector('#summary');
+
+    function classFromPath(path) {
+      const normalized = path.toLowerCase().replaceAll('-', '_').replaceAll(' ', '_');
+      return classes.find((name) => normalized.includes(name)) || null;
+    }
+
+    function addText(parent, tag, value, className) {
+      const node = document.createElement(tag);
+      node.textContent = value;
+      if (className) node.className = className;
+      parent.append(node);
+      return node;
+    }
+
+    async function classify(file, card) {
+      const status = addText(card, 'p', 'Uploading and classifying…');
+      const body = new FormData();
+      body.append('file', file);
+      try {
+        const response = await fetch('/predict', { method: 'POST', body });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || `Request failed (${response.status})`);
+        status.remove();
+        const heading = addText(card, 'h2', `${result.fruit} — ${result.quality}`);
+        heading.setAttribute('aria-label', `Prediction: ${result.fruit}, ${result.quality}`);
+        addText(card, 'p', `Confidence: ${result.confidence}%`);
+        if (result.low_confidence) addText(card, 'span', 'Low confidence', 'warning');
+        for (const [label, percent] of Object.entries(result.probabilities)) {
+          const row = document.createElement('div'); row.className = 'row';
+          addText(row, 'span', label);
+          const bar = document.createElement('progress'); bar.max = 100; bar.value = percent; bar.setAttribute('aria-label', `${label}: ${percent}%`); row.append(bar);
+          addText(row, 'span', `${percent}%`); card.append(row);
+        }
+        return result.label;
+      } catch (error) {
+        status.remove();
+        addText(card, 'p', error.message || 'Could not classify this image.', 'error');
+        return null;
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const files = [...input.files];
+      if (!files.length) return;
+      results.replaceChildren(); summary.hidden = true; summary.replaceChildren();
+      const button = document.querySelector('#submit'); button.disabled = true;
+      const counts = {}; let correct = 0; let known = 0;
+      try {
+        for (const file of files) {
+          const card = document.createElement('article'); card.className = 'card';
+          addText(card, 'h2', file.name);
+          const image = document.createElement('img'); image.src = URL.createObjectURL(file); image.alt = `Selected image: ${file.name}`; card.append(image);
+          results.append(card);
+          const label = await classify(file, card);
+          if (label) { counts[label] = (counts[label] || 0) + 1; const truth = classFromPath(file.webkitRelativePath || file.name); if (truth) { known++; if (truth === label) correct++; } }
+        }
+        addText(summary, 'h2', 'Optional upload summary');
+        addText(summary, 'p', `Images: ${files.length}`);
+        addText(summary, 'h3', 'Predicted classes');
+        if (Object.keys(counts).length) for (const [label, count] of Object.entries(counts)) addText(summary, 'p', `${label}: ${count}`);
+        else addText(summary, 'p', 'No successful predictions.');
+        if (known) addText(summary, 'p', `Filename-based accuracy estimate: ${correct}/${known} (${(correct / known * 100).toFixed(1)}%); only files with a recognized class name are counted.`);
+        summary.hidden = false;
+      } finally { button.disabled = false; }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+
+# Generated images and local data
+bad_images/
+ml/reports/
+data/
+
+# Flutter
+.dart_tool/
+build/
+
+# Local tooling
+.idea/
+.vscode/
+*.log
