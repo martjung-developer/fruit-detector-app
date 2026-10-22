@@ -2,26 +2,26 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/freshness_result.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_theme.dart';
-import 'status_chip.dart';
 
-/// One staggered, animated class probability row.
+/// One animated freshness probability row with an accessible value label.
 class ProbabilityBar extends StatefulWidget {
   const ProbabilityBar({
-    required this.label,
+    required this.freshness,
     required this.value,
     required this.index,
     required this.isTop,
-    required this.topQuality,
+    required this.top,
     super.key,
   });
 
-  final String label;
+  final Freshness freshness;
   final double value;
   final int index;
   final bool isTop;
-  final String topQuality;
+  final Freshness top;
 
   @override
   State<ProbabilityBar> createState() => _ProbabilityBarState();
@@ -48,19 +48,21 @@ class _ProbabilityBarState extends State<ProbabilityBar> {
   @override
   Widget build(BuildContext context) {
     final barColor = widget.isTop
-        ? qualityStatusColor(widget.topQuality)
+        ? widget.top.statusColor
         : AppColors.primary.withValues(alpha: 0.7);
+    final percent = widget.value * 100;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.small),
       child: Semantics(
-        label: '${widget.label}: ${widget.value.toStringAsFixed(2)} percent',
+        label:
+            '${widget.freshness.label}: ${percent.toStringAsFixed(2)} percent',
         child: Row(
           children: [
             SizedBox(
               width: 124,
               child: Text(
-                widget.label,
-                maxLines: 2,
+                widget.freshness.label,
+                maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 13, color: AppColors.textMain),
               ),
@@ -80,10 +82,10 @@ class _ProbabilityBarState extends State<ProbabilityBar> {
                         ),
                         duration: const Duration(milliseconds: 600),
                         curve: Curves.easeOutCubic,
-                        builder: (context, animatedValue, child) => Container(
+                        builder: (context, animatedValue, _) => Container(
                           width:
                               constraints.maxWidth *
-                              (animatedValue / 100).clamp(0, 1),
+                              animatedValue.clamp(0.0, 1.0),
                           height: 12,
                           color: barColor,
                         ),
@@ -97,7 +99,7 @@ class _ProbabilityBarState extends State<ProbabilityBar> {
             SizedBox(
               width: 58,
               child: Text(
-                '${widget.value.toStringAsFixed(2)}%',
+                '${percent.toStringAsFixed(2)}%',
                 textAlign: TextAlign.end,
                 style: const TextStyle(
                   fontSize: 13,

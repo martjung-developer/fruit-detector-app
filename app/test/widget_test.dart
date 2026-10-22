@@ -7,8 +7,11 @@ void main() {
   testWidgets('classifier home page renders', (tester) async {
     await tester.pumpWidget(const FruitQualityApp());
     expect(find.text('Fruit Quality Classifier'), findsOneWidget);
-    expect(find.text('Click to upload a fruit image'), findsOneWidget);
-    expect(find.text('Your result will appear here'), findsOneWidget);
+    expect(find.text('Camera'), findsOneWidget);
+    expect(
+      find.text('Point the camera at a fruit and tap Scan fruit'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('home page fits phone, tablet, and desktop widths', (

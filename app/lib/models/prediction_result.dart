@@ -57,26 +57,4 @@ class Prediction {
       lowConfidence: value['low_confidence'] == true,
     );
   }
-
-  /// Human-friendly class label such as `Fresh orange`.
-  String get humanLabel => _titleCase(label.replaceAll('_', ' '));
-
-  /// Fruit title for the main result heading.
-  String get fruitTitle => _titleCase(fruit);
-
-  /// Quality title for the main result badge.
-  String get qualityTitle => _titleCase(quality);
-
-  /// Probabilities ordered from most likely to least likely.
-  List<MapEntry<String, double>> get sortedProbabilities {
-    final entries = probabilities.entries.toList()
-      ..sort((first, second) => second.value.compareTo(first.value));
-    return entries;
-  }
-
-  static String _titleCase(String value) => value
-      .split(' ')
-      .where((part) => part.isNotEmpty)
-      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
-      .join(' ');
 }

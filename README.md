@@ -84,6 +84,8 @@ cd app
 
 The web server URL is `http://localhost:8080`. For a release build and static server fallback:
 
+Web camera access requires a secure browser context: use HTTPS or `http://localhost`.
+
 ```fish
 ~/development/flutter/bin/flutter build web --dart-define=API_URL=http://localhost:8001
 cd build/web

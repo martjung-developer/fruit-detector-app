@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 
-import '../models/prediction_result.dart';
+import '../models/freshness_result.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 import 'probability_bar.dart';
 
-/// Card listing every predicted class from highest to lowest probability.
+/// Card listing the three freshness scores from highest to lowest.
 class ProbabilityList extends StatelessWidget {
-  const ProbabilityList({required this.prediction, super.key});
+  const ProbabilityList({required this.result, super.key});
 
-  final Prediction prediction;
+  final FreshnessResult result;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -18,26 +18,22 @@ class ProbabilityList extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Class probabilities', style: AppTextStyles.sectionTitle),
+          const Text(
+            'Freshness probabilities',
+            style: AppTextStyles.sectionTitle,
+          ),
           const SizedBox(height: AppSpacing.medium),
-          for (final entry in prediction.sortedProbabilities.indexed)
+          for (final entry in result.sortedProbabilities.indexed)
             ProbabilityBar(
               key: ValueKey(entry.$2.key),
-              label: _humanize(entry.$2.key),
+              freshness: entry.$2.key,
               value: entry.$2.value,
               index: entry.$1,
               isTop: entry.$1 == 0,
-              topQuality: prediction.quality,
+              top: result.top,
             ),
         ],
       ),
     ),
   );
-
-  String _humanize(String value) {
-    final words = value.replaceAll('_', ' ').split(' ');
-    return words
-        .map((word) => '${word[0].toUpperCase()}${word.substring(1)}')
-        .join(' ');
-  }
 }

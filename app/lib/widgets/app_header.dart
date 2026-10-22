@@ -39,14 +39,14 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'Fruit Quality Detector',
+                        'Fruit Quality Classifier',
                         style: constraints.maxWidth < 520
                             ? AppTextStyles.sectionTitle
                             : AppTextStyles.pageTitle,
                       ),
                       const SizedBox(height: 2),
                       const Text(
-                        'Upload a fruit photo to check its quality',
+                        'Point your camera at a fruit to check its freshness',
                         style: AppTextStyles.caption,
                       ),
                     ],
