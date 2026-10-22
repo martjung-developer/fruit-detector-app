@@ -1,2 +1,15 @@
-   [tool.vercel]
-   entrypoint = "api:app"
+[project]
+name = "fruit-detector-ml"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "tensorflow==2.21.0",
+    "numpy==2.4.6",
+    "pillow==13.0.0",
+    "fastapi==0.151.0",
+    "python-multipart==0.0.32",
+    "pydantic==2.14.1",
+]
+
+[tool.vercel]
+entrypoint = "api:app"
