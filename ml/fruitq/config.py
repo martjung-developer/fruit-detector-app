@@ -15,3 +15,4 @@ REPORTS_DIR = Path(os.getenv("REPORTS_DIR", str(ROOT / "reports")))
 API_PORT = int(os.getenv("PORT", "8001"))
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 LOW_CONF_THRESHOLD = float(os.getenv("LOW_CONF_THRESHOLD", "60.0"))
+ONNX_MODEL_PATH = Path(os.getenv("ONNX_MODEL_PATH", str(ROOT / "model.onnx")))

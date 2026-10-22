@@ -10,9 +10,9 @@ from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from tensorflow import keras
 
 from fruitq import config
+from fruitq.onnx_model import OnnxClassifier
 from fruitq.predict import predict_image
 
 
@@ -35,8 +35,8 @@ class HealthResponse(BaseModel):
 
 
 def create_app(
-    model_loader=keras.models.load_model,
-    model_path: Path = config.MODEL_PATH,
+    model_loader=OnnxClassifier,
+    model_path: Path = config.ONNX_MODEL_PATH,
     class_names_path: Path = config.CLASS_NAMES_PATH,
 ) -> FastAPI:
     """Create the application; injected paths/loaders support lightweight API tests."""
