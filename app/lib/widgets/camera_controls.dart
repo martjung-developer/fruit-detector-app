@@ -10,6 +10,7 @@ class CameraControls extends StatelessWidget {
     required this.onSwitchCamera,
     required this.canScan,
     required this.isScanning,
+    required this.hasManualScan,
     required this.liveMode,
     required this.canSwitchCamera,
     super.key,
@@ -20,6 +21,7 @@ class CameraControls extends StatelessWidget {
   final VoidCallback onSwitchCamera;
   final bool canScan;
   final bool isScanning;
+  final bool hasManualScan;
   final bool liveMode;
   final bool canSwitchCamera;
 
@@ -28,17 +30,19 @@ class CameraControls extends StatelessWidget {
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       const SizedBox(height: AppSpacing.medium),
-      Semantics(
-        button: true,
-        label: 'Scan fruit with the camera',
-        child: SizedBox(
-          height: 52,
-          child: FilledButton.icon(
-            onPressed: canScan && !isScanning ? onScan : null,
-            icon: const Icon(Icons.photo_camera),
-            label: Text(isScanning ? 'Analyzing...' : 'Scan fruit'),
-          ),
-        ),
+      SizedBox(
+        height: 52,
+        child: hasManualScan
+            ? OutlinedButton.icon(
+                onPressed: canScan && !isScanning ? onScan : null,
+                icon: const Icon(Icons.photo_camera),
+                label: Text(isScanning ? 'Analyzing...' : 'Scan again'),
+              )
+            : FilledButton.icon(
+                onPressed: canScan && !isScanning ? onScan : null,
+                icon: const Icon(Icons.photo_camera),
+                label: Text(isScanning ? 'Analyzing...' : 'Scan fruit'),
+              ),
       ),
       const SizedBox(height: AppSpacing.small),
       Row(

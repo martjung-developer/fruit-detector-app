@@ -70,6 +70,35 @@ class CameraService {
     }
   }
 
+  /// Pause playback while the page is backgrounded without releasing the camera.
+  Future<void> pausePreview() async {
+    final current = _controller;
+    if (current == null ||
+        !current.value.isInitialized ||
+        current.value.isPreviewPaused) {
+      return;
+    }
+    try {
+      await current.pausePreview();
+    } catch (error) {
+      throw CameraServiceException(_mapProblem(error));
+    }
+  }
+
+  /// Resume the existing preview controller when the page returns.
+  Future<void> resumePreview() async {
+    final current = _controller;
+    if (current == null || !current.value.isInitialized) {
+      throw const CameraServiceException(CameraProblem.noCameraFound);
+    }
+    if (!current.value.isPreviewPaused) return;
+    try {
+      await current.resumePreview();
+    } catch (error) {
+      throw CameraServiceException(_mapProblem(error));
+    }
+  }
+
   /// Release the active camera and preview resources.
   Future<void> dispose() async {
     final current = _controller;

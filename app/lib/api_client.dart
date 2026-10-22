@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -30,8 +31,10 @@ class ApiClient {
 
   static const String baseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://localhost:8001',
+    defaultValue: 'https://fruit-detector-api-omega.vercel.app',
   );
+
+  static const Duration _requestTimeout = Duration(seconds: 60);
 
   final http.Client _client;
 
@@ -48,7 +51,9 @@ class ApiClient {
       );
     late http.StreamedResponse streamed;
     try {
-      streamed = await _client.send(request);
+      streamed = await _client.send(request).timeout(_requestTimeout);
+    } on TimeoutException {
+      throw const ApiException('The classifier request timed out. Please try again.');
     } on http.ClientException {
       throw const ApiException('Could not connect to the classifier. Check the API server and URL.');
     } catch (_) {
@@ -56,7 +61,11 @@ class ApiClient {
     }
     late http.Response response;
     try {
-      response = await http.Response.fromStream(streamed);
+      response = await http.Response.fromStream(streamed).timeout(_requestTimeout);
+    } on TimeoutException {
+      throw const ApiException(
+        'The classifier response timed out. Please try again.',
+      );
     } catch (_) {
       throw const ApiException('Could not read the response from the classifier.');
     }
@@ -67,6 +76,12 @@ class ApiClient {
         if (body is Map<String, dynamic>) {
           final message = body['detail'] ?? body['error'];
           if (message is String && message.isNotEmpty) detail = message;
+          if (message is List && message.isNotEmpty && message.first is Map) {
+            final description = message.first['msg'];
+            if (description is String && description.isNotEmpty) {
+              detail = description;
+            }
+          }
         }
       } catch (_) {
         // Keep the friendly status message when an error body is not JSON.

@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../controllers/scan_controller.dart';
+import '../models/scan_history.dart';
+import '../services/camera_service.dart';
+import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 import '../utils/responsive.dart';
 import '../widgets/app_header.dart';
@@ -14,8 +17,9 @@ import '../widgets/error_state.dart';
 import '../widgets/loading_skeleton.dart';
 import '../widgets/probability_list.dart';
 import '../widgets/result_card.dart';
+import '../widgets/scan_history_list.dart';
 
-/// Responsive camera page that listens to [ScanController].
+/// Responsive camera scanning page and saved scan history.
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.controller});
 
@@ -44,12 +48,47 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  void _scanAgain() {
+  void _retryScan() {
     if (_controller.cameraController?.value.isInitialized ?? false) {
       unawaited(_controller.scan());
     } else {
       unawaited(_controller.usePhotoInstead());
     }
+  }
+
+  Future<void> _confirmClearHistory() async {
+    final clear = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear scan history?'),
+        content: const Text('This will remove all saved scans.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Clear all'),
+          ),
+        ],
+      ),
+    );
+    if (clear == true && mounted) _controller.clearHistory();
+  }
+
+  void _deleteHistoryEntry(ScanHistoryEntry entry) {
+    final deleted = _controller.deleteHistoryEntry(entry);
+    if (deleted == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Scan deleted'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => _controller.undoDelete(deleted),
+        ),
+      ),
+    );
   }
 
   Widget _cameraCard() => Card(
@@ -58,10 +97,7 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Camera',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-          ),
+          const Text('Camera', style: AppTextStyles.sectionTitle),
           const SizedBox(height: AppSpacing.medium),
           if (_controller.cameraProblem != null)
             CameraErrorState(
@@ -73,9 +109,8 @@ class _HomePageState extends State<HomePage> {
             CameraView(
               controller: _controller.cameraController,
               scanning: _controller.isScanning,
-              fallbackFrame: _controller.cameraController == null
-                  ? _controller.capturedFrame
-                  : null,
+              onPreviewError: (_) =>
+                  _controller.reportPreviewError(CameraProblem.unknown),
             ),
             CameraControls(
               onScan: () => unawaited(_controller.scan()),
@@ -84,6 +119,7 @@ class _HomePageState extends State<HomePage> {
               canScan:
                   _controller.cameraController?.value.isInitialized ?? false,
               isScanning: _controller.isScanning,
+              hasManualScan: _controller.hasManualScan,
               liveMode: _controller.liveMode,
               canSwitchCamera: _controller.canSwitchCamera,
             ),
@@ -93,22 +129,32 @@ class _HomePageState extends State<HomePage> {
     ),
   );
 
+  Widget _cameraColumn() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _cameraCard(),
+      const SizedBox(height: AppSpacing.large),
+      ScanHistoryList(
+        entries: _controller.history,
+        onSelect: _controller.selectHistoryEntry,
+        onDelete: _deleteHistoryEntry,
+        onClearAll: () => unawaited(_confirmClearHistory()),
+      ),
+    ],
+  );
+
   Widget _resultArea() {
     switch (_controller.state) {
-      case ScanState.initializingCamera:
-        if (_controller.result == null) return const EmptyState();
-        break;
       case ScanState.scanning:
         return const LoadingSkeleton(key: ValueKey('scanning'));
       case ScanState.apiError:
         return ErrorState(
           key: const ValueKey('api-error'),
           message: 'Could not reach the classification server. Make sure the API is running.',
-          onRetry: _scanAgain,
+          onRetry: _retryScan,
         );
+      case ScanState.initializingCamera:
       case ScanState.cameraProblem:
-        if (_controller.result == null) return const EmptyState();
-        break;
       case ScanState.ready:
         if (_controller.result == null) return const EmptyState();
         break;
@@ -120,12 +166,7 @@ class _HomePageState extends State<HomePage> {
     return Column(
       key: ValueKey('result-${result.top.name}-${_controller.liveMode}'),
       children: [
-        ResultCard(
-          result: result,
-          frameBytes: _controller.capturedFrame,
-          liveMode: _controller.liveMode,
-          onScanAgain: _scanAgain,
-        ),
+        ResultCard(result: result, liveMode: _controller.liveMode),
         const SizedBox(height: AppSpacing.medium),
         ProbabilityList(result: result),
       ],
@@ -175,7 +216,7 @@ class _HomePageState extends State<HomePage> {
                       ? Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(child: _cameraCard()),
+                            Expanded(child: _cameraColumn()),
                             const SizedBox(width: AppSpacing.large),
                             Expanded(child: _animatedResults()),
                           ],
@@ -183,7 +224,7 @@ class _HomePageState extends State<HomePage> {
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            _cameraCard(),
+                            _cameraColumn(),
                             const SizedBox(height: AppSpacing.large),
                             _animatedResults(),
                           ],

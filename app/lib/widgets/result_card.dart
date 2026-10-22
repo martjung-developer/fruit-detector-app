@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 
 import '../models/freshness_result.dart';
@@ -10,20 +8,12 @@ import 'status_chip.dart';
 
 /// Freshness-only result, confidence, advice, and frozen scan preview.
 class ResultCard extends StatelessWidget {
-  const ResultCard({
-    required this.result,
-    required this.liveMode,
-    required this.onScanAgain,
-    this.frameBytes,
-    super.key,
-  });
+  const ResultCard({required this.result, required this.liveMode, super.key});
 
   static const double lowConfidenceThreshold = 0.70;
 
   final FreshnessResult result;
-  final Uint8List? frameBytes;
   final bool liveMode;
-  final VoidCallback onScanAgain;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -32,7 +22,10 @@ class ResultCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Freshness result', style: AppTextStyles.sectionTitle),
+          const Text(
+            'Classification result',
+            style: AppTextStyles.sectionTitle,
+          ),
           const SizedBox(height: AppSpacing.large),
           Wrap(
             spacing: AppSpacing.medium,
@@ -102,31 +95,6 @@ class ResultCard extends StatelessWidget {
             const Text(
               'Live mode: updating every 2 seconds',
               style: AppTextStyles.caption,
-            ),
-          ],
-          if (frameBytes != null) ...[
-            const SizedBox(height: AppSpacing.medium),
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.memory(
-                    frameBytes!,
-                    width: 96,
-                    height: 72,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.medium),
-                Expanded(
-                  child: Text('Captured frame', style: AppTextStyles.caption),
-                ),
-                TextButton.icon(
-                  onPressed: onScanAgain,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Scan again'),
-                ),
-              ],
             ),
           ],
         ],

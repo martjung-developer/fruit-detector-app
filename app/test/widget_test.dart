@@ -12,6 +12,14 @@ void main() {
       find.text('Point the camera at a fruit and tap Scan fruit'),
       findsOneWidget,
     );
+    expect(find.text('Scan fruit'), findsOneWidget);
+    expect(find.text('Choose one or more photos'), findsNothing);
+    expect(find.text('Classify selected photos'), findsNothing);
+    expect(find.textContaining('Quality:'), findsNothing);
+    expect(find.textContaining('fresh_'), findsNothing);
+    expect(find.textContaining('apple'), findsNothing);
+    expect(find.textContaining('orange'), findsNothing);
+    expect(find.textContaining('pineapple'), findsNothing);
   });
 
   testWidgets('home page fits phone, tablet, and desktop widths', (

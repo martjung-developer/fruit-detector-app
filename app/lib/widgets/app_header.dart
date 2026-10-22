@@ -4,7 +4,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/app_theme.dart';
 
-/// Branded page header with the app name and upload instruction.
+/// Branded page header with the app name and camera instruction.
 class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   const AppHeader({super.key});
 

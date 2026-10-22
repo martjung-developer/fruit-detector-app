@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 
@@ -11,13 +9,13 @@ class CameraView extends StatelessWidget {
   const CameraView({
     required this.controller,
     required this.scanning,
-    this.fallbackFrame,
+    required this.onPreviewError,
     super.key,
   });
 
   final CameraController? controller;
   final bool scanning;
-  final Uint8List? fallbackFrame;
+  final ValueChanged<CameraException> onPreviewError;
 
   @override
   Widget build(BuildContext context) => AspectRatio(
@@ -28,8 +26,15 @@ class CameraView extends StatelessWidget {
         fit: StackFit.expand,
         children: [
           _previewContent(),
-          if (controller != null && controller!.value.isInitialized)
+          if (controller != null &&
+              controller!.value.isInitialized &&
+              !controller!.value.hasError)
             ScanOverlay(scanning: scanning),
+          if (controller != null && controller!.value.hasError)
+            _PreviewErrorListener(
+              errorDescription: controller!.value.errorDescription,
+              onPreviewError: onPreviewError,
+            ),
         ],
       ),
     ),
@@ -37,23 +42,25 @@ class CameraView extends StatelessWidget {
 
   Widget _previewContent() {
     final camera = controller;
-    if (camera != null && camera.value.isInitialized) {
-      return LayoutBuilder(
-        builder: (context, constraints) {
-          final aspectRatio = camera.value.aspectRatio;
-          return FittedBox(
-            fit: BoxFit.cover,
-            child: SizedBox(
-              width: constraints.maxWidth,
-              height: constraints.maxWidth / aspectRatio,
-              child: CameraPreview(camera),
+    if (camera != null && camera.value.hasError) {
+      return const ColoredBox(
+        color: AppColors.errorBg,
+        child: Center(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'The camera preview could not start. Check camera access and try again.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.statusRotten),
             ),
-          );
-        },
+          ),
+        ),
       );
     }
-    if (fallbackFrame case final bytes?) {
-      return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
+    if (camera != null && camera.value.isInitialized) {
+      // Keep the web HtmlElementView untransformed; camera_web sizes its video
+      // element to this clipped 4:3 area with object-fit: cover.
+      return CameraPreview(camera);
     }
     return const ColoredBox(
       color: AppColors.primaryDark,
@@ -62,4 +69,44 @@ class CameraView extends StatelessWidget {
       ),
     );
   }
+}
+
+class _PreviewErrorListener extends StatefulWidget {
+  const _PreviewErrorListener({
+    required this.errorDescription,
+    required this.onPreviewError,
+  });
+
+  final String? errorDescription;
+  final ValueChanged<CameraException> onPreviewError;
+
+  @override
+  State<_PreviewErrorListener> createState() => _PreviewErrorListenerState();
+}
+
+class _PreviewErrorListenerState extends State<_PreviewErrorListener> {
+  @override
+  void initState() {
+    super.initState();
+    _report();
+  }
+
+  @override
+  void didUpdateWidget(_PreviewErrorListener oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.errorDescription != widget.errorDescription) _report();
+  }
+
+  void _report() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.onPreviewError(
+          CameraException('preview_error', widget.errorDescription ?? ''),
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

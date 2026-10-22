@@ -27,25 +27,45 @@ class _LoadingSkeletonState extends State<LoadingSkeleton>
   @override
   Widget build(BuildContext context) => FadeTransition(
     opacity: Tween<double>(begin: 0.55, end: 1).animate(_controller),
-    child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.large),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _skeletonLine(width: 190, height: 22),
-            const SizedBox(height: AppSpacing.large),
-            _skeletonLine(width: 150, height: 34),
-            const SizedBox(height: AppSpacing.medium),
-            _skeletonLine(width: double.infinity, height: 14),
-            const SizedBox(height: AppSpacing.extraLarge),
-            for (var index = 0; index < 5; index++) ...[
-              _skeletonLine(width: double.infinity, height: 12),
-              const SizedBox(height: AppSpacing.medium),
-            ],
-          ],
+    child: Column(
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.large),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _skeletonLine(width: 190, height: 22),
+                const SizedBox(height: AppSpacing.large),
+                _skeletonLine(width: 150, height: 34),
+                const SizedBox(height: AppSpacing.medium),
+                _skeletonLine(width: double.infinity, height: 14),
+                const SizedBox(height: AppSpacing.small),
+                _skeletonLine(width: double.infinity, height: 14),
+                const SizedBox(height: AppSpacing.large),
+                _skeletonLine(width: double.infinity, height: 12),
+              ],
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.medium),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.large),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _skeletonLine(width: 190, height: 22),
+                const SizedBox(height: AppSpacing.medium),
+                for (var index = 0; index < 3; index++) ...[
+                  _skeletonLine(width: double.infinity, height: 12),
+                  const SizedBox(height: AppSpacing.medium),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ],
     ),
   );
 
