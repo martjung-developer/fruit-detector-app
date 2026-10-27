@@ -47,9 +47,9 @@ class _ScanOverlayState extends State<ScanOverlay>
     animation: _pulse,
     builder: (context, child) => Stack(
       children: [
-        Positioned.fill(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
+        Center(
+          child: AspectRatio(
+            aspectRatio: 1,
             child: DecoratedBox(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
@@ -90,7 +90,7 @@ class _ScanOverlayState extends State<ScanOverlay>
               child: Text(
                 widget.scanning
                     ? 'Analyzing...'
-                    : 'Place one fruit inside the frame',
+                    : 'Place one fruit inside the square',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 13,

@@ -40,15 +40,28 @@ enum Freshness {
 
 /// Probabilities grouped into the freshness-only classes presented by the app.
 class FreshnessResult {
-  FreshnessResult._(Map<Freshness, double> scores)
-    : probabilities = Map.unmodifiable(_normalize(scores)) {
+  FreshnessResult._(
+    Map<Freshness, double> scores, {
+    required this.rawTopClass,
+    required this.rawConfidence,
+    required this.apiLowConfidence,
+  }) : probabilities = Map.unmodifiable(_normalize(scores)) {
     final ordered = _sort(probabilities);
-    top = ordered.first.key;
-    confidence = ordered.first.value;
+    final groupedTop = ordered.first.key;
+    final rawQuality = rawTopClass.toLowerCase().split('_').first;
+    final rottenProbability = probabilities[Freshness.rotten] ?? 0;
+    if (rottenProbability >= 0.25 || rawQuality == 'rotten') {
+      top = Freshness.rotten;
+    } else if (rawQuality == 'overripe' && groupedTop == Freshness.fresh) {
+      top = Freshness.overripe;
+    } else {
+      top = groupedTop;
+    }
+    confidence = probabilities[top] ?? 0;
     sortedProbabilities = List.unmodifiable(ordered);
   }
 
-  /// Most likely freshness state.
+  /// Safety-adjusted freshness state selected for display.
   late final Freshness top;
 
   /// Probability for [top], normalized to the range from zero to one.
@@ -59,6 +72,15 @@ class FreshnessResult {
 
   /// All grouped probabilities sorted high to low with stable enum-order ties.
   late final List<MapEntry<Freshness, double>> sortedProbabilities;
+
+  /// Highest individual class label returned by the API.
+  final String rawTopClass;
+
+  /// Highest individual class confidence returned by the API, in percent.
+  final double rawConfidence;
+
+  /// API confidence flag computed from the raw class prediction.
+  final bool apiLowConfidence;
 
   /// Group raw API classes by the text before the first underscore.
   factory FreshnessResult.fromPrediction(Prediction prediction) {
@@ -75,19 +97,34 @@ class FreshnessResult {
         grouped[state] = grouped[state]! + entry.value;
       }
     }
-    return FreshnessResult._(grouped);
+    return FreshnessResult._(
+      grouped,
+      rawTopClass: prediction.label,
+      rawConfidence: prediction.confidence,
+      apiLowConfidence: prediction.lowConfidence,
+    );
   }
 
   /// Build a result from already-grouped scores, for live-mode smoothing.
   factory FreshnessResult.fromGroupedProbabilities(
-    Map<Freshness, double> scores,
-  ) => FreshnessResult._({
-    for (final state in Freshness.values)
-      state:
-          scores[state] != null && scores[state]!.isFinite && scores[state]! > 0
-          ? scores[state]!
-          : 0,
-  });
+    Map<Freshness, double> scores, {
+    String rawTopClass = 'unknown',
+    double rawConfidence = 0,
+    bool apiLowConfidence = false,
+  }) => FreshnessResult._(
+    {
+      for (final state in Freshness.values)
+        state:
+            scores[state] != null &&
+                scores[state]!.isFinite &&
+                scores[state]! > 0
+            ? scores[state]!
+            : 0,
+    },
+    rawTopClass: rawTopClass,
+    rawConfidence: rawConfidence,
+    apiLowConfidence: apiLowConfidence,
+  );
 
   static Map<Freshness, double> _normalize(Map<Freshness, double> scores) {
     final sum = Freshness.values.fold<double>(

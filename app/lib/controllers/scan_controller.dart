@@ -305,7 +305,13 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
               .fold<double>(0, (sum, value) => sum + value) /
           _recentLiveResults.length;
     }
-    return FreshnessResult.fromGroupedProbabilities(average);
+    final latest = _recentLiveResults.last;
+    return FreshnessResult.fromGroupedProbabilities(
+      average,
+      rawTopClass: latest.rawTopClass,
+      rawConfidence: latest.rawConfidence,
+      apiLowConfidence: latest.apiLowConfidence,
+    );
   }
 
   Future<Uint8List> _makeThumbnail(Uint8List bytes) async {

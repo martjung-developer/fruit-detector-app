@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
@@ -64,9 +66,74 @@ class CameraService {
       throw const CameraServiceException(CameraProblem.noCameraFound);
     }
     try {
-      return await current.takePicture();
+      final captured = await current.takePicture();
+      final bytes = await captured.readAsBytes();
+      final isFrontFacing =
+          current.description.lensDirection != CameraLensDirection.back;
+      final croppedBytes = await _centerSquarePng(
+        bytes,
+        unmirror: isFrontFacing,
+      );
+      return XFile.fromData(
+        croppedBytes,
+        name: 'camera_capture.png',
+        mimeType: 'image/png',
+      );
     } catch (error) {
+      if (error is CameraServiceException) rethrow;
       throw CameraServiceException(_mapProblem(error));
+    }
+  }
+
+  Future<Uint8List> _centerSquarePng(
+    Uint8List bytes, {
+    required bool unmirror,
+  }) async {
+    ui.Codec? codec;
+    ui.Image? source;
+    ui.Image? cropped;
+    ui.Picture? picture;
+    try {
+      codec = await ui.instantiateImageCodec(bytes);
+      source = (await codec.getNextFrame()).image;
+      final side = source.width < source.height ? source.width : source.height;
+      final sourceRect = ui.Rect.fromLTWH(
+        (source.width - side) / 2,
+        (source.height - side) / 2,
+        side.toDouble(),
+        side.toDouble(),
+      );
+      final destinationRect = ui.Rect.fromLTWH(
+        0,
+        0,
+        side.toDouble(),
+        side.toDouble(),
+      );
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      if (unmirror) {
+        canvas
+          ..translate(side.toDouble(), 0)
+          ..scale(-1, 1);
+      }
+      canvas.drawImageRect(
+        source,
+        sourceRect,
+        destinationRect,
+        ui.Paint()..filterQuality = ui.FilterQuality.high,
+      );
+      picture = recorder.endRecording();
+      cropped = await picture.toImage(side, side);
+      final data = await cropped.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) {
+        throw const CameraServiceException(CameraProblem.unknown);
+      }
+      return data.buffer.asUint8List();
+    } finally {
+      cropped?.dispose();
+      picture?.dispose();
+      source?.dispose();
+      codec?.dispose();
     }
   }
 

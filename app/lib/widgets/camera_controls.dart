@@ -78,6 +78,11 @@ class CameraControls extends StatelessWidget {
         'Tip: use good lighting and a plain background.',
         style: TextStyle(fontSize: 13, color: Color(0xFF5E7064)),
       ),
+      const SizedBox(height: AppSpacing.small),
+      const Text(
+        'Do not photograph a screen.',
+        style: TextStyle(fontSize: 13, color: Color(0xFF5E7064)),
+      ),
     ],
   );
 }

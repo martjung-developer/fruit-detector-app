@@ -29,7 +29,7 @@ class ProbabilityList extends StatelessWidget {
               freshness: entry.$2.key,
               value: entry.$2.value,
               index: entry.$1,
-              isTop: entry.$1 == 0,
+              isTop: entry.$2.key == result.top,
               top: result.top,
             ),
         ],
