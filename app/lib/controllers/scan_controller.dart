@@ -11,7 +11,6 @@ import '../models/freshness_result.dart';
 import '../models/scan_history.dart';
 import '../services/camera_service.dart';
 
-/// The visible state of the camera scan flow.
 enum ScanState {
   initializingCamera,
   ready,
@@ -21,7 +20,6 @@ enum ScanState {
   apiError,
 }
 
-/// Coordinates camera access, manual/live scans, and freshness results.
 class ScanController extends ChangeNotifier with WidgetsBindingObserver {
   ScanController({CameraService? cameraService, ApiClient? apiClient})
     : _cameraService = cameraService ?? CameraService(),
