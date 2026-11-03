@@ -24,6 +24,7 @@ class CameraErrorState extends StatelessWidget {
     CameraProblem.noCameraFound => 'No camera was found on this device.',
     CameraProblem.cameraBusy =>
       'The camera is being used by another app. Close it and try again.',
+    CameraProblem.cameraNotReady => 'Camera not ready. Wait for the preview to appear, check the lighting, and try again.',
     CameraProblem.unknown =>
       'The camera could not be started. Check its permissions and try again.',
   };

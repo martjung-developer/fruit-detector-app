@@ -4,7 +4,13 @@ import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 
 /// Friendly camera failure categories used by the scan UI.
-enum CameraProblem { permissionDenied, noCameraFound, cameraBusy, unknown }
+enum CameraProblem {
+  permissionDenied,
+  noCameraFound,
+  cameraBusy,
+  cameraNotReady,
+  unknown,
+}
 
 /// A camera failure mapped to a safe, user-facing category.
 class CameraServiceException implements Exception {
@@ -68,12 +74,10 @@ class CameraService {
     try {
       final captured = await current.takePicture();
       final bytes = await captured.readAsBytes();
-      final isFrontFacing =
-          current.description.lensDirection != CameraLensDirection.back;
-      final croppedBytes = await _centerSquarePng(
-        bytes,
-        unmirror: isFrontFacing,
-      );
+      final croppedBytes = await _centerSquarePng(bytes, unmirror: false);
+      if (!await _isUsableFrame(croppedBytes)) {
+        throw const CameraServiceException(CameraProblem.cameraNotReady);
+      }
       return XFile.fromData(
         croppedBytes,
         name: 'camera_capture.png',
@@ -82,6 +86,37 @@ class CameraService {
     } catch (error) {
       if (error is CameraServiceException) rethrow;
       throw CameraServiceException(_mapProblem(error));
+    }
+  }
+
+  Future<bool> _isUsableFrame(Uint8List bytes) async {
+    ui.Codec? codec;
+    ui.Image? image;
+    try {
+      codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: 32,
+        targetHeight: 32,
+      );
+      image = (await codec.getNextFrame()).image;
+      final data = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      if (data == null) return false;
+      final pixels = data.buffer.asUint8List();
+      var sum = 0.0;
+      var squares = 0.0;
+      final count = pixels.length ~/ 4;
+      for (var i = 0; i < pixels.length; i += 4) {
+        final gray = (pixels[i] + pixels[i + 1] + pixels[i + 2]) / 3;
+        sum += gray;
+        squares += gray * gray;
+      }
+      final mean = sum / count;
+      return mean >= 4 && (squares / count) - (mean * mean) >= 1;
+    } catch (_) {
+      return false;
+    } finally {
+      image?.dispose();
+      codec?.dispose();
     }
   }
 
@@ -188,6 +223,12 @@ class CameraService {
     _controller = cameraController;
     try {
       await cameraController.initialize();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      final startupFrame = await cameraController.takePicture();
+      final startupBytes = await startupFrame.readAsBytes();
+      if (!await _isUsableFrame(startupBytes)) {
+        throw const CameraServiceException(CameraProblem.cameraNotReady);
+      }
     } catch (_) {
       _controller = null;
       await cameraController.dispose();

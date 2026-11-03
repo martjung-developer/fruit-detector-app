@@ -53,21 +53,30 @@ class ApiClient {
     try {
       streamed = await _client.send(request).timeout(_requestTimeout);
     } on TimeoutException {
-      throw const ApiException('The classifier request timed out. Please try again.');
+      throw const ApiException(
+        'The classifier request timed out. Please try again.',
+      );
     } on http.ClientException {
-      throw const ApiException('Could not connect to the classifier. Check the API server and URL.');
+      throw const ApiException(
+        'Could not connect to the classifier. Check the API server and URL.',
+      );
     } catch (_) {
-      throw const ApiException('Could not connect to the classifier. Check the API server and URL.');
+      throw const ApiException(
+        'Could not connect to the classifier. Check the API server and URL.',
+      );
     }
     late http.Response response;
     try {
-      response = await http.Response.fromStream(streamed).timeout(_requestTimeout);
+      response = await http.Response.fromStream(streamed)
+          .timeout(_requestTimeout);
     } on TimeoutException {
       throw const ApiException(
         'The classifier response timed out. Please try again.',
       );
     } catch (_) {
-      throw const ApiException('Could not read the response from the classifier.');
+      throw const ApiException(
+        'Could not read the response from the classifier.',
+      );
     }
     if (response.statusCode != 200) {
       var detail = 'The classifier returned an error (${response.statusCode}).';
@@ -95,5 +104,47 @@ class ApiClient {
       throw const ApiException('The classifier returned invalid JSON.');
     }
     return Prediction.fromJson(decoded);
+  }
+
+  Future<void> collect(
+    Uint8List bytes,
+    String filename, {
+    required String label,
+    required String sourceId,
+  }) async {
+    final request =
+        http.MultipartRequest('POST', Uri.parse(baseUrl).resolve('/collect'))
+          ..fields['true_label'] = label
+          ..fields['source_id'] = sourceId
+          ..files.add(
+            http.MultipartFile.fromBytes(
+              'file',
+              bytes,
+              filename: filename,
+              contentType: MediaType('image', _imageSubtype(filename)),
+            ),
+          );
+    try {
+      final streamed = await _client.send(request).timeout(_requestTimeout);
+      final response = await http.Response.fromStream(streamed)
+          .timeout(_requestTimeout);
+      if (response.statusCode != 200) {
+        var message = 'Collection failed (${response.statusCode}).';
+        try {
+          final body = jsonDecode(response.body);
+          if (body is Map) {
+            final detail = body['detail'] ?? body['error'];
+            if (detail is String && detail.isNotEmpty) message = detail;
+          }
+        } catch (_) {}
+        throw ApiException(message);
+      }
+    } on TimeoutException {
+      throw const ApiException('Collection timed out. Please try again.');
+    } on ApiException {
+      rethrow;
+    } catch (_) {
+      throw const ApiException('Could not reach the collection API.');
+    }
   }
 }

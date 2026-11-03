@@ -72,6 +72,54 @@ Open `http://localhost:8001`. The API also provides `GET /health` and `POST /pre
 
 For a specific browser origin, set for example `set -x CORS_ORIGINS http://localhost:8080`; the development default is `*`.
 
+## How to collect screen data
+
+Start collection mode only for the local collection session. In fish, from `ml/` run:
+
+```fish
+set -x COLLECT 1
+uvicorn api:app --port 8001
+```
+
+Then from `app/`, enable the collection controls with `--dart-define=COLLECT=true`:
+
+```fish
+~/development/flutter/bin/flutter run -d web-server --web-port 8080 --dart-define=API_URL=http://localhost:8001 --dart-define=COLLECT=true
+```
+
+For each labeled source, use one full-screen image from a website, set screen brightness to 80–100%, position the camera 20–40 cm away, and fill the square guide. Do not mirror the image. Capture five frames with slight angle changes, using one source image per label entry and a shared source ID for those five frames. Collect at least 20 different sources per class; never reuse a source across classes. The API stores frames under `ml/screen_data/raw/` and records their source, label, timestamp, and measured brightness in `manifest.csv`.
+
+Build source-isolated splits and check average-hash duplicates against the existing training and test sets (read-only):
+
+```fish
+cd ml
+python build_screen_dataset.py
+```
+
+This writes only `screen_data/train/` and `screen_data/test/`. It keeps all captures sharing a source ID together and excludes test images whose average-hash distance is 5 or less from existing training/test images or the new screen training split.
+
+## Screen model training and evaluation
+
+The screen model is separate from the current model. From `ml/`, verify a single augmented training batch without fitting or saving a model:
+
+```fish
+source .venv/bin/activate.fish
+python train_screen.py --dry-run
+```
+
+Train only when ready, optionally unfreezing the last 30 backbone layers or balancing class weights:
+
+```fish
+python train_screen.py --epochs 20
+python train_screen.py --epochs 20 --fine-tune --class-weights
+```
+
+The new artifacts go to `ml/models/model_screen.keras`, `model_screen.onnx`, and a class-name copy. The API can use the new ONNX model without code edits by setting `MODEL_PATH` to that file. Evaluation writes a markdown report and confusion-matrix PNGs under `ml/reports/`:
+
+```fish
+python eval_screen.py
+```
+
 ## Run Flutter web
 
 Start the API first. From the project root:

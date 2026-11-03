@@ -23,6 +23,11 @@ import '../widgets/scan_history_list.dart';
 class HomePage extends StatefulWidget {
   const HomePage({super.key, this.controller});
 
+  static const collectMode = bool.fromEnvironment(
+    'COLLECT',
+    defaultValue: false,
+  );
+
   /// Optional controller override for widget tests.
   final ScanController? controller;
 
@@ -31,8 +36,25 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  static const _collectionLabels = <String>[
+    'fresh_apple',
+    'fresh_orange',
+    'fresh_pineapple',
+    'overripe_apple',
+    'overripe_orange',
+    'overripe_pineapple',
+    'rotten_apple',
+    'rotten_orange',
+    'rotten_pineapple',
+  ];
+
   late final ScanController _controller;
   late final bool _ownsController;
+  final TextEditingController _sourceIdController = TextEditingController(
+    text: 'source-001',
+  );
+  String _collectionLabel = _collectionLabels.first;
+  int _sourceSuggestion = 1;
 
   @override
   void initState() {
@@ -44,6 +66,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    _sourceIdController.dispose();
     if (_ownsController) _controller.dispose();
     super.dispose();
   }
@@ -123,6 +146,10 @@ class _HomePageState extends State<HomePage> {
               liveMode: _controller.liveMode,
               canSwitchCamera: _controller.canSwitchCamera,
             ),
+            if (HomePage.collectMode) ...[
+              const SizedBox(height: AppSpacing.medium),
+              _collectionCard(),
+            ],
           ],
         ],
       ),
@@ -172,6 +199,80 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
+
+  Widget _collectionCard() => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(AppSpacing.medium),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Collect screen data', style: AppTextStyles.sectionTitle),
+          const SizedBox(height: AppSpacing.small),
+          DropdownButtonFormField<String>(
+            initialValue: _collectionLabel,
+            decoration: const InputDecoration(labelText: 'True label'),
+            items: _collectionLabels
+                .map(
+                  (label) => DropdownMenuItem(value: label, child: Text(label)),
+                )
+                .toList(),
+            onChanged: _controller.isCollecting
+                ? null
+                : (label) {
+                    if (label != null) setState(() => _collectionLabel = label);
+                  },
+          ),
+          TextField(
+            controller: _sourceIdController,
+            enabled: !_controller.isCollecting,
+            decoration: const InputDecoration(
+              labelText: 'Source ID',
+              helperText:
+                  'Use one ID for five frames of the same website image.',
+            ),
+          ),
+          const SizedBox(height: AppSpacing.small),
+          OutlinedButton.icon(
+            onPressed:
+                _controller.isCollecting ||
+                    _controller.liveMode ||
+                    !(_controller.cameraController?.value.isInitialized ??
+                        false)
+                ? null
+                : () async {
+                    final sourceId = _sourceIdController.text.trim();
+                    await _controller.collectFive(
+                      label: _collectionLabel,
+                      sourceId: sourceId,
+                    );
+                    if (!mounted) return;
+                    if (_controller.collectionMessage?.startsWith(
+                          'Saved 5 of 5',
+                        ) ??
+                        false) {
+                      _sourceSuggestion++;
+                      _sourceIdController.text =
+                          'source-${_sourceSuggestion.toString().padLeft(3, '0')}';
+                    }
+                    setState(() {});
+                  },
+            icon: const Icon(Icons.camera_alt_outlined),
+            label: Text(
+              _controller.isCollecting ? 'Capturing...' : 'Capture x5',
+            ),
+          ),
+          Text(
+            'Captured for this class: ${_controller.collectionCount(_collectionLabel)}',
+          ),
+          if (_controller.collectionMessage case final message?)
+            Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.small),
+              child: Text(message),
+            ),
+        ],
+      ),
+    ),
+  );
 
   Widget _animatedResults() => AnimatedSwitcher(
     duration: const Duration(milliseconds: 450),

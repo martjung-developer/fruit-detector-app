@@ -74,11 +74,15 @@ void main() {
     });
 
     test('resolves ties in enum order', () {
-      final result = FreshnessResult.fromPrediction(
-        prediction({'rotten': 1, 'overripe': 1, 'fresh': 1}),
-      );
+      final result = FreshnessResult.fromGroupedProbabilities({
+        Freshness.rotten: 1,
+        Freshness.overripe: 1,
+        Freshness.fresh: 1,
+      }, rawTopClass: 'fresh');
 
-      expect(result.top, Freshness.fresh);
+      // The grouped tie order is Fresh first, but the safety override makes
+      // Rotten the displayed state when its probability is at least 25%.
+      expect(result.top, Freshness.rotten);
       expect(result.sortedProbabilities.map((entry) => entry.key), [
         Freshness.fresh,
         Freshness.overripe,

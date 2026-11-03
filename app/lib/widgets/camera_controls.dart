@@ -56,7 +56,7 @@ class CameraControls extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Live mode'),
                   value: liveMode,
-                  onChanged: canScan ? onLiveModeChanged : null,
+                  onChanged: canScan && !isScanning ? onLiveModeChanged : null,
                 ),
               ),
             ),

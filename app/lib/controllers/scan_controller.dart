@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../api_client.dart';
 import '../models/freshness_result.dart';
+import '../models/collection_counter.dart';
 import '../models/scan_history.dart';
 import '../services/camera_service.dart';
 
@@ -33,6 +34,9 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
   final ApiClient _apiClient;
   final List<FreshnessResult> _recentLiveResults = [];
   final ScanHistory _history = ScanHistory();
+  final CollectionCounter _collectionCounts = CollectionCounter();
+  bool _isCollecting = false;
+  String? _collectionMessage;
   Timer? _liveTimer;
   ScanState _state = ScanState.initializingCamera;
   CameraProblem? _cameraProblem;
@@ -64,7 +68,8 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
   FreshnessResult? get result => _result;
 
   /// Whether a scan request is currently being handled.
-  bool get isScanning => _requestInFlight || _state == ScanState.scanning;
+  bool get isScanning =>
+      _requestInFlight || _isCollecting || _state == ScanState.scanning;
 
   /// Whether the periodic live scan is enabled.
   bool get liveMode => _liveMode;
@@ -80,6 +85,65 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Friendly request or picker error for the page to display.
   String? get errorMessage => _errorMessage;
+
+  /// Whether an x5 collection sequence is running.
+  bool get isCollecting => _isCollecting;
+
+  /// Current collection feedback.
+  String? get collectionMessage => _collectionMessage;
+
+  /// Number of successfully uploaded captures for [label] in this session.
+  int collectionCount(String label) => _collectionCounts.countFor(label);
+
+  /// Capture and upload five frames, one second apart, without prediction/history.
+  Future<void> collectFive({
+    required String label,
+    required String sourceId,
+  }) async {
+    if (_disposed ||
+        _isCollecting ||
+        _requestInFlight ||
+        _liveMode ||
+        !_cameraService.isInitialized) {
+      return;
+    }
+    if (sourceId.trim().isEmpty) {
+      _collectionMessage = 'Enter a source ID before collecting.';
+      _notify();
+      return;
+    }
+    _isCollecting = true;
+    _collectionMessage = 'Starting capture sequence...';
+    _notify();
+    try {
+      for (var index = 0; index < 5; index++) {
+        if (_disposed) return;
+        if (index > 0) await Future<void>.delayed(const Duration(seconds: 1));
+        if (_disposed) return;
+        final frame = await _cameraService.capture();
+        await _apiClient.collect(
+          await frame.readAsBytes(),
+          frame.name,
+          label: label,
+          sourceId: sourceId.trim(),
+        );
+        _collectionCounts.increment(label);
+        _collectionMessage = 'Saved ${index + 1} of 5 captures for $label.';
+        _notify();
+      }
+    } on CameraServiceException catch (error) {
+      _collectionMessage = error.problem == CameraProblem.cameraNotReady
+          ? 'Camera not ready: the captured frame was blank or too dark.'
+          : 'Camera capture failed. Try again when the preview is ready.';
+    } on ApiException catch (error) {
+      _collectionMessage = error.message;
+    } catch (_) {
+      _collectionMessage = 'Collection failed. Check the API and try again.';
+    } finally {
+      _isCollecting = false;
+      _notify();
+    }
+  }
 
   /// Display a saved result in the right-hand result cards.
   void selectHistoryEntry(ScanHistoryEntry entry) {
@@ -157,7 +221,9 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Switch to the next available camera and reinitialize its preview.
   Future<void> switchCamera() async {
-    if (_disposed || !canSwitchCamera || _requestInFlight) return;
+    if (_disposed || !canSwitchCamera || _requestInFlight || _isCollecting) {
+      return;
+    }
     _state = ScanState.initializingCamera;
     _notify();
     try {
@@ -180,7 +246,7 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Enable periodic scanning or stop it and discard any stale live response.
   void setLiveMode(bool enabled) {
-    if (_disposed || enabled == _liveMode) return;
+    if (_disposed || _isCollecting || enabled == _liveMode) return;
     if (enabled && !_cameraService.isInitialized) return;
     _liveMode = enabled;
     _liveTimer?.cancel();
@@ -212,7 +278,7 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Pick one photo and classify it when camera access is unavailable.
   Future<void> usePhotoInstead() async {
-    if (_disposed || _requestInFlight) return;
+    if (_disposed || _isCollecting || _requestInFlight) return;
     try {
       final file = await ImagePicker().pickImage(source: ImageSource.gallery);
       if (file == null || _disposed) return;
@@ -234,7 +300,7 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
     required Future<XFile> Function() capture,
     required bool requiresCamera,
   }) async {
-    if (_disposed || _requestInFlight) return;
+    if (_disposed || _isCollecting || _requestInFlight) return;
     if (requiresCamera && !_cameraService.isInitialized) return;
     _requestInFlight = true;
     _errorMessage = null;
@@ -265,10 +331,12 @@ class ScanController extends ChangeNotifier with WidgetsBindingObserver {
       _state = ScanState.result;
       if (!live) {
         _hasManualScan = true;
-        _selectedHistoryEntry = _history.add(
-          imageBytes: thumbnail!,
-          result: result,
-        );
+        if (result.confidence >= 0.70 && !result.apiLowConfidence) {
+          _selectedHistoryEntry = _history.add(
+            imageBytes: thumbnail!,
+            result: result,
+          );
+        }
       }
     } on CameraServiceException catch (error) {
       if (!_isCurrent(requestId)) return;
