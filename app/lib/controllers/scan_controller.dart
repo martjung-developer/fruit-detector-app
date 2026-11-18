@@ -24,7 +24,7 @@ enum ScanState {
 class ScanController extends ChangeNotifier with WidgetsBindingObserver {
   ScanController({CameraService? cameraService, ApiClient? apiClient})
     : _cameraService = cameraService ?? CameraService(),
-      _apiClient = apiClient ?? ApiClient() {
+      _apiClient = apiClient ?? ApiClient() {q
     WidgetsBinding.instance.addObserver(this);
   }
 
